@@ -14,11 +14,14 @@ The frontend and Backend for Frontend (BFF) layer. The only service exposed exte
 
 ### auth-service (Rust / Axum - port 8081)
 
-Handles user identity and authentication.
+Handles user identity and authentication. Designed as a minimal OIDC-compatible token issuer so it can be replaced by an open-source auth system (Keycloak, Zitadel, Authentik, etc.) with minimal changes to other services.
 
 - User registration with Argon2id password hashing
 - Login with JWT issuance (access token: 15min, refresh token: 7 days)
 - Token refresh endpoint
+- RS256 signing with a managed key pair (private key stays in auth-service only)
+- JWKS endpoint (`GET /.well-known/jwks.json`) publishing the public key for token verification
+- OpenID Connect discovery endpoint (`GET /.well-known/openid-configuration`)
 - User profile retrieval and batch lookup
 - Health/readiness endpoints
 
@@ -221,18 +224,37 @@ The `schema` JSONB in `sheet_templates` defines the structure of documents:
 
 ### JWT Strategy
 
-- Algorithm: HS256 (symmetric key shared across services via K8s Secret)
-- Access token: 15-minute expiry, contains `{ sub: user_id, username, iat, exp }`
-- Refresh token: 7-day expiry, stored in DB for revocation
+- Algorithm: **RS256** (asymmetric). Auth-service holds the private key; all other services verify using the public key fetched from the JWKS endpoint.
+- Access token: 15-minute expiry, contains standard OIDC claims: `iss` (issuer URL), `sub` (user ID), `aud` (audience), `exp`, `iat`, `username`
+- Refresh token: 7-day expiry, stored in DB for revocation (opaque token, not a JWT)
+
+### JWKS and Discovery
+
+Auth-service exposes two well-known endpoints:
+
+- `GET /.well-known/openid-configuration` - Returns issuer URL, JWKS URI, supported algorithms, and token endpoint URLs
+- `GET /.well-known/jwks.json` - Returns the current RSA public key(s) in JWK format
+
+All other services are configured with a single `JWKS_URL` environment variable (e.g., `http://auth-service:8081/.well-known/jwks.json`). They fetch and cache the public key(s) from this URL to validate tokens locally. No shared secrets.
+
+### Migration Path to External Auth
+
+To replace auth-service with an open-source OIDC provider (Keycloak, Zitadel, etc.):
+1. Deploy the new provider and migrate user accounts from the `auth.users` table
+2. Update `JWKS_URL` in each service's config to point at the new provider's JWKS endpoint
+3. Update the BFF login flow (direct POST becomes OIDC authorization code flow with redirects)
+4. Remove auth-service
+
+Backend services other than the BFF require zero code changes - only a config update.
 
 ### Flow
 
 1. Browser sends credentials to Next.js BFF (`POST /api/auth/login`)
 2. BFF proxies to auth-service
-3. Auth-service validates credentials, returns JWT pair
+3. Auth-service validates credentials, signs JWT with RS256 private key, returns token pair
 4. BFF stores tokens in httpOnly/Secure/SameSite=Strict cookies
 5. On subsequent requests, BFF reads cookie and adds `Authorization: Bearer` header to backend calls
-6. Each backend service validates JWT locally using the shared signing key
+6. Each backend service validates JWT locally using the public key fetched from the JWKS endpoint
 7. On 401, BFF automatically refreshes the token and retries
 
 ## Permissions Model
@@ -265,7 +287,7 @@ Only document owners can edit their documents. GMs can see everything but cannot
 - **Services**: ClusterIP for each deployment
 - **Ingress**: nginx-ingress routing all traffic to web service
 - **StatefulSet/Operator**: CloudNativePG for PostgreSQL 16
-- **Secrets**: JWT signing key, per-service DB credentials
+- **Secrets**: RS256 private key (auth-service only), per-service DB credentials
 - **ConfigMap**: Service URLs, log levels, non-secret configuration
 
 ### Local Development
@@ -295,4 +317,4 @@ REST endpoints served by Next.js API routes. See [api.md](api.md) for the full A
 
 REST/JSON over Kubernetes ClusterIP services. Each service publishes an OpenAPI spec.
 
-All internal requests include an `Authorization: Bearer <jwt>` header. Each service validates the JWT in middleware before processing requests.
+All internal requests include an `Authorization: Bearer <jwt>` header. Each service validates the JWT in middleware using the public key fetched from the auth-service JWKS endpoint (configured via `JWKS_URL` env var).

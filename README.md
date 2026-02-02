@@ -18,7 +18,7 @@ Browser --> Next.js (BFF + UI) --> Backend Services --> PostgreSQL
 | Service | Language/Framework | Port | Responsibilities |
 |---------|-------------------|------|-----------------|
 | `web` | Next.js / TypeScript | 3000 | UI, BFF API routes, SSR, auth cookie management |
-| `auth-service` | Rust / Axum | 8081 | Registration, login, JWT issuance, user profiles |
+| `auth-service` | Rust / Axum | 8081 | Registration, login, JWT issuance (RS256), JWKS endpoint, user profiles |
 | `campaign-service` | Go / chi | 8082 | Campaign CRUD, memberships, roles (GM/Player), invite codes |
 | `document-service` | Kotlin / Ktor | 8083 | Sheet templates, document CRUD, versioning, field-level GM-only filtering |
 | `permission-service` | Python / FastAPI | 8084 | Permission checks, sharing CRUD, visibility resolution |
@@ -37,7 +37,7 @@ Browser --> Next.js (BFF + UI) --> Backend Services --> PostgreSQL
 - **Database**: PostgreSQL 16 with schema-per-service isolation
 - **Infrastructure**: Kubernetes, CloudNativePG, nginx-ingress
 - **Local Dev**: kind (local K8s), Tilt (dev orchestration)
-- **Auth**: Username/password with JWT (HS256), httpOnly cookies
+- **Auth**: Username/password with JWT (RS256 + JWKS), httpOnly cookies. Designed for future migration to an open-source OIDC provider.
 
 ## Project Structure
 
