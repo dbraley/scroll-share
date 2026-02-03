@@ -14,6 +14,14 @@ allow_k8s_contexts('kind-scroll-share')
 
 k8s_yaml('deploy/k8s/namespace.yaml')
 
+# Wait for namespace to exist before deploying resources into it
+local_resource(
+    'namespace-ready',
+    cmd='kubectl wait --for=jsonpath=.status.phase=Active namespace/scroll-share --timeout=60s',
+    deps=['deploy/k8s/namespace.yaml'],
+    labels=['infrastructure'],
+)
+
 # ============================================================================
 # Infrastructure: CloudNativePG Operator
 # ============================================================================
@@ -45,7 +53,7 @@ local_resource(
     'postgres-cluster',
     cmd='kubectl apply -f deploy/k8s/postgres/cluster.yaml',
     deps=['deploy/k8s/postgres/cluster.yaml'],
-    resource_deps=['cnpg-operator-ready'],
+    resource_deps=['cnpg-operator-ready', 'namespace-ready'],
     labels=['infrastructure'],
 )
 
