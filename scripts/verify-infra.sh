@@ -44,7 +44,8 @@ fi
 echo -n "Checking PostgreSQL connectivity... "
 POD=$(kubectl get pods -n scroll-share -l cnpg.io/cluster=scroll-share-db -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
 if [ -n "$POD" ]; then
-    if kubectl exec -n scroll-share "$POD" -- psql -U scrollshare -d scrollshare -c "SELECT 1" &>/dev/null; then
+    # Use postgres superuser which has peer auth access via socket
+    if kubectl exec -n scroll-share "$POD" -- bash -c 'psql -U postgres -d scrollshare -c "SELECT 1"' &>/dev/null; then
         echo "OK"
     else
         echo "FAIL: cannot connect"
@@ -56,7 +57,7 @@ fi
 # Check schemas exist
 echo -n "Checking database schemas... "
 if [ -n "$POD" ]; then
-    SCHEMAS=$(kubectl exec -n scroll-share "$POD" -- psql -U scrollshare -d scrollshare -t -c "SELECT schema_name FROM information_schema.schemata WHERE schema_name IN ('auth', 'campaign', 'document', 'permission')" 2>/dev/null | wc -l)
+    SCHEMAS=$(kubectl exec -n scroll-share "$POD" -- bash -c "psql -U postgres -d scrollshare -t -c \"SELECT schema_name FROM information_schema.schemata WHERE schema_name IN ('auth', 'campaign', 'document', 'permission')\"" 2>/dev/null | grep -c -E "auth|campaign|document|permission" || echo "0")
     if [ "$SCHEMAS" -ge 4 ]; then
         echo "OK (all 4 schemas present)"
     else
