@@ -39,11 +39,21 @@ local_resource(
 # Infrastructure: PostgreSQL (via CloudNativePG)
 # ============================================================================
 
-k8s_yaml('deploy/k8s/postgres/cluster.yaml')
-
-k8s_resource(
-    'scroll-share-db',
+# Deploy the CloudNativePG Cluster CR after operator is ready
+# Using local_resource because Tilt doesn't natively track CRDs
+local_resource(
+    'postgres-cluster',
+    cmd='kubectl apply -f deploy/k8s/postgres/cluster.yaml',
+    deps=['deploy/k8s/postgres/cluster.yaml'],
     resource_deps=['cnpg-operator-ready'],
+    labels=['infrastructure'],
+)
+
+# Wait for PostgreSQL cluster to be ready
+local_resource(
+    'postgres-ready',
+    cmd='kubectl wait --for=condition=Ready cluster/scroll-share-db -n scroll-share --timeout=180s',
+    resource_deps=['postgres-cluster'],
     labels=['infrastructure'],
 )
 
