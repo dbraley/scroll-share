@@ -13,23 +13,13 @@ spec:
     initdb:
       database: scrollshare
       owner: scrollshare
-      postInitSQL:
-        - CREATE SCHEMA IF NOT EXISTS auth;
-        - CREATE SCHEMA IF NOT EXISTS campaign;
-        - CREATE SCHEMA IF NOT EXISTS document;
-        - CREATE SCHEMA IF NOT EXISTS permission;
-        - CREATE USER auth_user WITH PASSWORD 'auth_dev_password';
-        - CREATE USER campaign_user WITH PASSWORD 'campaign_dev_password';
-        - CREATE USER document_user WITH PASSWORD 'document_dev_password';
-        - CREATE USER permission_user WITH PASSWORD 'permission_dev_password';
-        - GRANT ALL PRIVILEGES ON SCHEMA auth TO auth_user;
-        - GRANT ALL PRIVILEGES ON SCHEMA campaign TO campaign_user;
-        - GRANT ALL PRIVILEGES ON SCHEMA document TO document_user;
-        - GRANT ALL PRIVILEGES ON SCHEMA permission TO permission_user;
-        - ALTER DEFAULT PRIVILEGES IN SCHEMA auth GRANT ALL ON TABLES TO auth_user;
-        - ALTER DEFAULT PRIVILEGES IN SCHEMA campaign GRANT ALL ON TABLES TO campaign_user;
-        - ALTER DEFAULT PRIVILEGES IN SCHEMA document GRANT ALL ON TABLES TO document_user;
-        - ALTER DEFAULT PRIVILEGES IN SCHEMA permission GRANT ALL ON TABLES TO permission_user;
+      # postInitApplicationSQL runs in the application database (scrollshare)
+      # as the application owner (scrollshare user)
+      postInitApplicationSQL:
+        - CREATE SCHEMA IF NOT EXISTS auth
+        - CREATE SCHEMA IF NOT EXISTS campaign
+        - CREATE SCHEMA IF NOT EXISTS document
+        - CREATE SCHEMA IF NOT EXISTS permission
 
   postgresql:
     parameters:
