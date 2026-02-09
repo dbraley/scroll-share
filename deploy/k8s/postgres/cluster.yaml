@@ -1,0 +1,27 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: scroll-share-db
+  namespace: scroll-share
+spec:
+  instances: 1
+
+  storage:
+    size: 1Gi
+
+  bootstrap:
+    initdb:
+      database: scrollshare
+      owner: scrollshare
+      # postInitApplicationSQL runs in the application database (scrollshare)
+      # as the application owner (scrollshare user)
+      postInitApplicationSQL:
+        - CREATE SCHEMA IF NOT EXISTS auth
+        - CREATE SCHEMA IF NOT EXISTS campaign
+        - CREATE SCHEMA IF NOT EXISTS document
+        - CREATE SCHEMA IF NOT EXISTS permission
+
+  postgresql:
+    parameters:
+      log_statement: "all"
+      log_min_duration_statement: "0"
