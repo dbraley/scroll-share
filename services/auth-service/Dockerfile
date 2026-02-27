@@ -2,18 +2,16 @@ FROM rust:1.93-bookworm AS builder
 
 WORKDIR /app
 
-# Copy manifests and create a dummy main to cache dependencies
+# Copy manifests and build a dependency-only skeleton to cache deps
 COPY Cargo.toml Cargo.lock ./
-RUN mkdir src && echo "fn main() {}" > src/main.rs && mkdir -p src/routes
-RUN echo "pub mod app; pub mod config; pub mod db; pub mod errors; pub mod routes;" > src/lib.rs
-RUN echo "pub mod health;" > src/routes/mod.rs
-RUN touch src/app.rs src/config.rs src/db.rs src/errors.rs src/routes/health.rs
+RUN mkdir src && echo "fn main() {}" > src/main.rs
 RUN cargo build --release 2>/dev/null || true
+RUN rm -rf src
 
 # Copy actual source and rebuild
 COPY src/ src/
 COPY migrations/ migrations/
-RUN touch src/main.rs && cargo build --release
+RUN cargo build --release
 
 FROM debian:bookworm-slim
 
