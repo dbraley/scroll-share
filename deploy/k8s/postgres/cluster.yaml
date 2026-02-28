@@ -14,14 +14,40 @@ spec:
       database: scrollshare
       owner: scrollshare
       # postInitApplicationSQL runs in the application database (scrollshare)
-      # as the application owner (scrollshare user)
+      # as the superuser (postgres). Each entry is a separate SQL statement.
       postInitApplicationSQL:
         - CREATE SCHEMA IF NOT EXISTS auth
         - CREATE SCHEMA IF NOT EXISTS campaign
         - CREATE SCHEMA IF NOT EXISTS document
         - CREATE SCHEMA IF NOT EXISTS permission
+        # auth-service role
+        - CREATE USER auth_user WITH PASSWORD 'auth_dev_password'
+        - GRANT ALL PRIVILEGES ON SCHEMA auth TO auth_user
+        - ALTER DEFAULT PRIVILEGES IN SCHEMA auth GRANT ALL ON TABLES TO auth_user
+        - ALTER DEFAULT PRIVILEGES IN SCHEMA auth GRANT ALL ON SEQUENCES TO auth_user
+        # campaign-service role
+        - CREATE USER campaign_user WITH PASSWORD 'campaign_dev_password'
+        - GRANT ALL PRIVILEGES ON SCHEMA campaign TO campaign_user
+        - ALTER DEFAULT PRIVILEGES IN SCHEMA campaign GRANT ALL ON TABLES TO campaign_user
+        - ALTER DEFAULT PRIVILEGES IN SCHEMA campaign GRANT ALL ON SEQUENCES TO campaign_user
+        # document-service role
+        - CREATE USER document_user WITH PASSWORD 'document_dev_password'
+        - GRANT ALL PRIVILEGES ON SCHEMA document TO document_user
+        - ALTER DEFAULT PRIVILEGES IN SCHEMA document GRANT ALL ON TABLES TO document_user
+        - ALTER DEFAULT PRIVILEGES IN SCHEMA document GRANT ALL ON SEQUENCES TO document_user
+        # permission-service role
+        - CREATE USER permission_user WITH PASSWORD 'permission_dev_password'
+        - GRANT ALL PRIVILEGES ON SCHEMA permission TO permission_user
+        - ALTER DEFAULT PRIVILEGES IN SCHEMA permission GRANT ALL ON TABLES TO permission_user
+        - ALTER DEFAULT PRIVILEGES IN SCHEMA permission GRANT ALL ON SEQUENCES TO permission_user
 
   postgresql:
     parameters:
       log_statement: "all"
       log_min_duration_statement: "0"
+    pg_hba:
+      # Allow service users to connect with password from within the cluster
+      - host scrollshare auth_user all md5
+      - host scrollshare campaign_user all md5
+      - host scrollshare document_user all md5
+      - host scrollshare permission_user all md5

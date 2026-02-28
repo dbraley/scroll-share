@@ -84,10 +84,29 @@ local_resource(
 )
 
 # ============================================================================
-# Services (to be added in later features)
+# Services
 # ============================================================================
 
-# auth-service will be added in Feature 2
+# --- auth-service (Rust/Axum) ---
+docker_build(
+    'auth-service',
+    'services/auth-service',
+    dockerfile='services/auth-service/Dockerfile',
+)
+
+k8s_yaml([
+    'deploy/k8s/auth-service/configmap.yaml',
+    'deploy/k8s/auth-service/deployment.yaml',
+    'deploy/k8s/auth-service/service.yaml',
+])
+
+k8s_resource(
+    'auth-service',
+    port_forwards=['8081:8081'],
+    resource_deps=['postgres-ready'],
+    labels=['services'],
+)
+
 # campaign-service will be added in Phase 2
 # document-service will be added in Phase 3
 # permission-service will be added in Phase 4
