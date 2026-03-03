@@ -41,23 +41,22 @@ async fn register_duplicate_username_returns_409() {
     let app = spawn_app().await;
     let username = unique("dupeuser");
 
-    let payload = json!({
-        "username": username,
-        "display_name": "First User",
-        "password": "securepassword123"
-    });
-
-    // Register first user
+    // Register first user — .expect() panics only if the HTTP request
+    // fails to send (network error), not on a non-200 status code.
     let response = app
         .client
         .post(app.url("/auth/register"))
-        .json(&payload)
+        .json(&json!({
+            "username": username,
+            "display_name": "First User",
+            "password": "securepassword123"
+        }))
         .send()
         .await
         .expect("Failed to send request");
     assert_eq!(response.status(), 201);
 
-    // Register duplicate
+    // Register same username again
     let response = app
         .client
         .post(app.url("/auth/register"))
