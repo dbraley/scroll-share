@@ -4,6 +4,8 @@ use tokio::net::TcpListener;
 
 pub struct TestApp {
     pub addr: String,
+    // Used by tests that verify DB state directly (e.g. registration tests checking password hashing)
+    #[allow(dead_code)]
     pub pool: PgPool,
     pub client: reqwest::Client,
 }
